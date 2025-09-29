@@ -11,7 +11,7 @@ import SwiftUI
 struct CanonCameraApp: App {
     var body: some Scene {
         WindowGroup {
-            CameraDiscoveryView()
+            CameraDirectControlView()
         }
     }
 }
