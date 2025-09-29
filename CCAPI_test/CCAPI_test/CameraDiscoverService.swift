@@ -32,8 +32,36 @@ class CanonCameraDiscovery: ObservableObject {
         errorMessage = nil
         discoveredCameras.removeAll()
         
+        checkNetworkConnectivity()
+        
         searchTask = Task {
             await performDiscovery()
+        }
+    }
+    
+    private func checkNetworkConnectivity() {
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { path in
+            print("🌐 Network status: \(path.status)")
+            print("🌐 Available interfaces: \(path.availableInterfaces)")
+            if path.status == .satisfied {
+                print("✅ Network connection available")
+                if let interface = path.availableInterfaces.first {
+                    print("📡 Using interface: \(interface)")
+                }
+            } else {
+                print("❌ No network connection")
+                Task { @MainActor in
+                    self.errorMessage = "No network connection available"
+                }
+            }
+        }
+        let queue = DispatchQueue(label: "NetworkMonitor")
+        monitor.start(queue: queue)
+        
+        // Stop monitoring after a short time
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            monitor.cancel()
         }
     }
     
@@ -49,13 +77,19 @@ class CanonCameraDiscovery: ObservableObject {
         print("🔍 Starting Canon camera discovery...")
         
         for attempt in 1...maxRetries {
-            guard !Task.isCancelled else { break }
+            guard !Task.isCancelled else {
+                print("⏹️ Discovery cancelled")
+                break
+            }
             
             print("📡 Discovery attempt \(attempt)/\(maxRetries)")
+            print("🚀 About to call sendMSearchRequest()")  // 이 로그 추가
             await sendMSearchRequest()
+            print("✅ sendMSearchRequest() completed")        // 이 로그 추가
             
             // Wait between attempts
             if attempt < maxRetries {
+                print("⏳ Waiting 1 second before next attempt") // 이 로그 추가
                 try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
             }
         }
@@ -74,26 +108,44 @@ class CanonCameraDiscovery: ObservableObject {
         let port = NWEndpoint.Port(rawValue: ssdpPort)!
         let endpoint = NWEndpoint.hostPort(host: host, port: port)
         
+        print("🔧 Creating UDP connection to \(ssdpAddress):\(ssdpPort)")
+        
         let parameters = NWParameters.udp
         parameters.allowLocalEndpointReuse = true
+        parameters.includePeerToPeer = true // Add P2P support
         
         udpConnection = NWConnection(to: endpoint, using: parameters)
         
         udpConnection?.stateUpdateHandler = { [weak self] state in
+            print("🔧 UDP Connection state: \(state)")
             switch state {
             case .ready:
-                Task { await self?.sendData(msearchRequest) }
+                print("✅ UDP connection ready, sending M-SEARCH")
+                Task {
+                    await self?.sendData(msearchRequest)
+                }
             case .failed(let error):
                 print("❌ UDP connection failed: \(error)")
                 Task { @MainActor in
                     self?.errorMessage = "Network connection failed: \(error.localizedDescription)"
                 }
-            default:
-                break
+            case .waiting(let error):
+                print("⏳ UDP connection waiting: \(error)")
+            case .preparing:
+                print("🔧 UDP connection preparing...")
+            case .setup:
+                print("🔧 UDP connection setup...")
+            case .cancelled:
+                print("🚫 UDP connection cancelled")
+            @unknown default:
+                print("❓ UDP connection unknown state: \(state)")
             }
         }
         
         udpConnection?.start(queue: .global())
+        
+        // Wait a bit for connection to establish
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
         // Listen for responses
         await listenForResponses()
