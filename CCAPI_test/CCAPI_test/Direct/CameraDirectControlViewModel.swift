@@ -14,7 +14,7 @@ final class CameraDirectControlViewModel {
     var currentAbility: [String] = []
     var settingResponse: SettingResponse?
     
-    let shootingService = ShootingService()
+    let shootingService = ShootingService(username: "soop", password: "000000")
 }
 
 extension CameraDirectControlViewModel {
