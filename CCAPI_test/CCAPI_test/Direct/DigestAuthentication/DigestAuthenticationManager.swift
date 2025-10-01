@@ -83,30 +83,24 @@ class DigestAuthenticationManager {
         method: String,
         uri: String
     ) -> String {
-        // HA1 = MD5(username:realm:password)
+        // URI가 baseURL을 포함하지 않도록 주의
+        // /ccapi/ver100/... 형태여야 함
+        let cleanUri = uri.hasPrefix("/") ? uri : "/" + uri
+        
         let ha1 = md5("\(username):\(digestInfo.realm):\(password)")
+        let ha2 = md5("\(method):\(cleanUri)")
         
-        // HA2 = MD5(method:uri)
-        let ha2 = md5("\(method):\(uri)")
-        
-        // cnonce: 클라이언트가 생성하는 랜덤 값
         let cnonce = generateCnonce()
-        
-        // nc: nonce count를 16진수 8자리로 변환
         let ncValue = String(format: "%08x", digestInfo.nc)
         
-        // response 계산
         let response: String
         if let qop = digestInfo.qop {
-            // qop가 있는 경우: MD5(HA1:nonce:nc:cnonce:qop:HA2)
             response = md5("\(ha1):\(digestInfo.nonce):\(ncValue):\(cnonce):\(qop):\(ha2)")
         } else {
-            // qop가 없는 경우: MD5(HA1:nonce:HA2)
             response = md5("\(ha1):\(digestInfo.nonce):\(ha2)")
         }
         
-        // Authorization 헤더 조합
-        var header = "Digest username=\"\(username)\", realm=\"\(digestInfo.realm)\", nonce=\"\(digestInfo.nonce)\", uri=\"\(uri)\", response=\"\(response)\""
+        var header = "Digest username=\"\(username)\", realm=\"\(digestInfo.realm)\", nonce=\"\(digestInfo.nonce)\", uri=\"\(cleanUri)\", response=\"\(response)\""
         
         if let qop = digestInfo.qop {
             header += ", qop=\(qop), nc=\(ncValue), cnonce=\"\(cnonce)\""
@@ -119,6 +113,70 @@ class DigestAuthenticationManager {
         header += ", algorithm=\(digestInfo.algorithm)"
         
         return header
+    }
+//    func createAuthorizationHeader(
+//        digestInfo: DigestInfo,
+//        method: String,
+//        uri: String
+//    ) -> String {
+//        // HA1 = MD5(username:realm:password)
+//        let ha1 = md5("\(username):\(digestInfo.realm):\(password)")
+//        
+//        // HA2 = MD5(method:uri)
+//        let ha2 = md5("\(method):\(uri)")
+//        
+//        // cnonce: 클라이언트가 생성하는 랜덤 값
+//        let cnonce = generateCnonce()
+//        
+//        // nc: nonce count를 16진수 8자리로 변환
+//        let ncValue = String(format: "%08x", digestInfo.nc)
+//        
+//        // response 계산
+//        let response: String
+//        if let qop = digestInfo.qop {
+//            // qop가 있는 경우: MD5(HA1:nonce:nc:cnonce:qop:HA2)
+//            response = md5("\(ha1):\(digestInfo.nonce):\(ncValue):\(cnonce):\(qop):\(ha2)")
+//        } else {
+//            // qop가 없는 경우: MD5(HA1:nonce:HA2)
+//            response = md5("\(ha1):\(digestInfo.nonce):\(ha2)")
+//        }
+//        
+//        // Authorization 헤더 조합
+//        var header = "Digest username=\"\(username)\", realm=\"\(digestInfo.realm)\", nonce=\"\(digestInfo.nonce)\", uri=\"\(uri)\", response=\"\(response)\""
+//        
+//        if let qop = digestInfo.qop {
+//            header += ", qop=\(qop), nc=\(ncValue), cnonce=\"\(cnonce)\""
+//        }
+//        
+//        if let opaque = digestInfo.opaque {
+//            header += ", opaque=\"\(opaque)\""
+//        }
+//        
+//        header += ", algorithm=\(digestInfo.algorithm)"
+//        
+//        return header
+//    }
+    
+    // MARK: - Initial Challenge Fetching
+    /// 초기 Digest challenge를 가져옵니다
+    func fetchInitialChallenge(from url: URL) async throws {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 401,
+              let wwwAuthHeader = httpResponse.value(forHTTPHeaderField: "WWW-Authenticate"),
+              let digestInfo = parseDigestChallenge(from: wwwAuthHeader) else {
+            throw NSError(domain: "DigestAuth", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch initial challenge"])
+        }
+        
+        print("✅ Initial digest challenge fetched successfully")
+        print("Realm: \(digestInfo.realm)")
+        print("Nonce: \(digestInfo.nonce)")
+        
+        updateDigestInfo(digestInfo)
     }
     
     // MARK: - Helper Methods

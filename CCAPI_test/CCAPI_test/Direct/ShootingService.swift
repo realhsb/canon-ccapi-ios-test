@@ -20,60 +20,48 @@ protocol ShootingServiceType {
 final class ShootingService: ShootingServiceType {
     
     private let jsonDecoder = JSONDecoder()
-//    let provider = MoyaProvider<ShootingTarget>(plugins: [MoyaLoggingPlugin()])
-//    let provider = MoyaProvider<ShootingTarget>(
-//        session: unsafeSession,
-//        plugins: [MoyaLoggingPlugin()]
-//    )
-    var provider = MoyaProvider<ShootingTarget>()
+    //    let provider = MoyaProvider<ShootingTarget>(plugins: [MoyaLoggingPlugin()])
+    //    let provider = MoyaProvider<ShootingTarget>(
+    //        session: unsafeSession,
+    //        plugins: [MoyaLoggingPlugin()]
+    //    )
+    var provider = MoyaProvider<ShootingTarget>(plugins: [MoyaLoggingPlugin()])
     
-    init(username: String, password: String) {
-        // 1. Digest 인증 매니저 생성
-            let authManager = DigestAuthenticationManager(username: username, password: password)
-            
-            // 2. Interceptor 생성
-            let interceptor = DigestAuthInterceptor(authManager: authManager)
-            
-            // 3. URLSession 설정
-            let configuration = URLSessionConfiguration.default
-            configuration.timeoutIntervalForRequest = 30
-            configuration.timeoutIntervalForResource = 60
-            configuration.waitsForConnectivity = false
-            
-            // 4. ServerTrustManager 설정 (모든 SSL 검증 무시 - 개발용)
-            let serverTrustManager = ServerTrustManager(
-                allHostsMustBeEvaluated: false,
-                evaluators: [cameraIP: DisabledTrustEvaluator()]
-            )
-            
-            // 5. Alamofire Session 생성
-            let session = Session(
-                configuration: configuration,
-                interceptor: interceptor,
-                serverTrustManager: serverTrustManager
-            )
-            
-            // 6. Moya Provider 생성
-            self.provider = MoyaProvider<ShootingTarget>(
-                session: session,
-                plugins: [NetworkLoggerPlugin(configuration: .init(logOptions: .verbose))]
-            )
+    let client = CCAPIClient()
     
     func getISO() async throws -> SettingResponse {
         return try await withCheckedThrowingContinuation { continuation in
-            provider.request(.getISO) { result in
+            // 1단계: 인증
+            client.authenticate(username: "soop", password: "0000") { result in
                 switch result {
+                case .success:
+                    print("인증 성공!")
                     
-                case let .success(response):
-                    do {
-                        let response = try self.jsonDecoder.decode(SettingResponse.self, from: response.data)
-                        continuation.resume(returning: response)
-                    } catch {
-                        Log.network("Failure - get ISO()", error.localizedDescription)
-                        continuation.resume(throwing: error)
+                    // 2단계: API 호출
+                    self.client.makeAuthenticatedRequest(endpoint: "ver100/shooting/settings/iso") { result in
+                        switch result {
+                        case .success(let data):
+                            // 3단계: JSON 디코딩
+                            do {
+                                let decodedResponse = try self.jsonDecoder.decode(SettingResponse.self, from: data)
+                                print("디코딩 성공: value=\(decodedResponse.value ?? "nil"), ability=\(decodedResponse.ability ?? [])")
+                                continuation.resume(returning: decodedResponse)
+                            } catch {
+                                print("디코딩 실패: \(error.localizedDescription)")
+                                Log.network("Failure - get ISO() - Decoding", error.localizedDescription)
+                                continuation.resume(throwing: error)
+                            }
+                            
+                        case .failure(let error):
+                            print("API 호출 실패: \(error)")
+                            Log.network("Failure - get ISO() - API Request", error.localizedDescription)
+                            continuation.resume(throwing: error)
+                        }
                     }
-                case let .failure(error):
-                    Log.network("Failure - get ISO()", error.localizedDescription)
+                    
+                case .failure(let error):
+                    print("인증 실패: \(error)")
+                    Log.network("Failure - get ISO() - Authentication", error.localizedDescription)
                     continuation.resume(throwing: error)
                 }
             }
@@ -86,16 +74,18 @@ final class ShootingService: ShootingServiceType {
                 switch result {
                 case let .success(response):
                     do {
-                        let response = try self.jsonDecoder.decode(SettingResponse.self, from: response.data)
+                        let decodedResponse = try self.jsonDecoder.decode(SettingResponse.self, from: response.data)
+                        continuation.resume(returning: decodedResponse)
                     } catch {
-                        Log.network("Failure - get ISO()", error.localizedDescription)
+                        Log.network("Failure - put ISO() - Decoding", error.localizedDescription)
                         continuation.resume(throwing: error)
                     }
                 case let .failure(error):
-                    Log.network("Failure - get ISO()", error.localizedDescription)
+                    Log.network("Failure - put ISO()", error.localizedDescription)
                     continuation.resume(throwing: error)
                 }
             }
         }
     }
 }
+

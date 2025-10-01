@@ -3,18 +3,22 @@
 <plist version="1.0">
 <dict>
 	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>192.168.1.2</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<string>YES</string>
-			</dict>
-		</dict>
-	</dict>
+<dict>
+    <key>NSExceptionDomains</key>
+    <dict>
+        <key>192.168.1.2</key>
+        <dict>
+            <key>NSExceptionAllowsInsecureHTTPLoads</key>
+            <false/>
+            <key>NSExceptionRequiresForwardSecrecy</key>
+            <false/>
+            <key>NSExceptionMinimumTLSVersion</key>
+            <string>TLSv1.2</string>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+        </dict>
+    </dict>
+</dict>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_upnp._tcp</string>
