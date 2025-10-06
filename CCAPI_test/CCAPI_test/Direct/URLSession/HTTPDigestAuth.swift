@@ -8,6 +8,7 @@
 import Foundation
 import CryptoKit
 
+/// HTTP Digest 인증 헤더를 생성하는 클래스
 class HTTPDigestAuth {
     private let username: String
     private let password: String
@@ -19,15 +20,22 @@ class HTTPDigestAuth {
         self.password = password
     }
     
+    /// Digest 인증 헤더를 생성
+    /// - Parameters:
+    ///   - method: HTTP 메서드 (GET, POST, PUT 등)
+    ///   - url: 요청 URL
+    ///   - body: 요청 바디 (optional)
+    ///   - wwwAuthHeader: WWW-Authenticate 헤더 (새로운 nonce를 받은 경우에만 전달, 재사용 시 nil)
+    /// - Returns: Authorization 헤더 문자열
     func getDigestAuthHeader(method: String, url: String, body: Data?, wwwAuthHeader: String?) -> String? {
         let headerMap: [String: String]
         
         if let wwwAuthHeader = wwwAuthHeader {
-            // 첫 번째 인증
+            // 첫 번째 인증 또는 새로운 nonce 사용
             headerMap = parseAuthHeader(wwwAuthHeader)
             nonceCount = 1
         } else {
-            // 이전 인증 정보 사용
+            // 이전 인증 정보 재사용
             guard let savedMap = wwwAuthHeaderMap else { return nil }
             headerMap = savedMap
         }
@@ -46,7 +54,7 @@ class HTTPDigestAuth {
         guard let urlComponents = URLComponents(string: url) else {
             return nil
         }
-
+        
         var uri = urlComponents.path.isEmpty ? "/" : urlComponents.path
         
         if let query = urlComponents.query {
@@ -56,7 +64,7 @@ class HTTPDigestAuth {
         let clientNonce = generateClientNonce()
         let nonceCountStr = String(format: "%08x", nonceCount)
         
-        // A1 생성
+        // A1 생성: username:realm:password
         var a1 = "\(username):\(realm):\(password)"
         a1 = hashString(a1, algorithm: algorithm)
         
@@ -65,7 +73,7 @@ class HTTPDigestAuth {
             a1 = hashString(a1, algorithm: algorithm)
         }
         
-        // A2 생성
+        // A2 생성: method:uri
         var a2 = "\(method):\(uri)"
         var selectedQop: String?
         
@@ -131,10 +139,13 @@ class HTTPDigestAuth {
         header += "response=\"\(response)\""
         wwwAuthHeaderMap = headerMap
         
-        print("Auth Header: \(header)")
+        print("Auth Header generated")
         return header
     }
     
+    // MARK: - Private Methods
+    
+    /// WWW-Authenticate 헤더 파싱
     private func parseAuthHeader(_ wwwAuthHeader: String) -> [String: String] {
         var headerMap = [String: String]()
         let headerContent = wwwAuthHeader.trimmingCharacters(in: .whitespaces)
@@ -158,17 +169,20 @@ class HTTPDigestAuth {
         return headerMap
     }
     
+    /// 클라이언트 Nonce 생성 (16바이트 랜덤 값)
     private func generateClientNonce() -> String {
         var bytes = [UInt8](repeating: 0, count: 16)
         _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
         return bytes.map { String(format: "%02x", $0) }.joined()
     }
     
+    /// 문자열 해시
     private func hashString(_ string: String, algorithm: String) -> String {
         guard let data = string.data(using: .utf8) else { return "" }
         return hashData(data, algorithm: algorithm)
     }
     
+    /// 데이터 해시 (MD5 또는 SHA-256)
     private func hashData(_ data: Data, algorithm: String) -> String {
         let upperAlgorithm = algorithm.uppercased()
         
