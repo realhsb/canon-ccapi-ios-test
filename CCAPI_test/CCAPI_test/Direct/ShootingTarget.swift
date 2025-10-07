@@ -25,7 +25,7 @@ extension ShootingTarget: BaseTargetType {
         switch self {
         case .getISO:
                 .get
-        case .putISO(let string):
+        case .putISO(let value):
                 .put
         }
     }
