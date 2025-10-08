@@ -14,9 +14,9 @@ class NetworkManager {
     static let shared = NetworkManager()
     
     private let username = "user"
-    private let password = "0000"  // 실제 비밀번호로 변경
+    private let password = "0000"
     
-    private let interceptor: DigestAuthInterceptor
+    let digestAuthPlugin: DigestAuthPlugin
     private let session: Session
     
     /// CCAPI Provider
@@ -24,14 +24,15 @@ class NetworkManager {
         return MoyaProvider<ShootingTarget>(
             session: session,
             plugins: [
+                digestAuthPlugin,
                 NetworkLoggerPlugin(configuration: .init(logOptions: .verbose))
             ]
         )
     }()
     
     private init() {
-        // Digest Auth Interceptor 생성
-        interceptor = DigestAuthInterceptor(username: username, password: password)
+        // Digest Auth Plugin 생성
+        digestAuthPlugin = DigestAuthPlugin(username: username, password: password)
         
         // SSL 인증서 처리를 위한 ServerTrustManager 설정
         let serverTrustManager = ServerTrustManager(evaluators: [
@@ -45,7 +46,6 @@ class NetworkManager {
         
         session = Session(
             configuration: configuration,
-            interceptor: interceptor,
             serverTrustManager: serverTrustManager
         )
         
@@ -55,7 +55,7 @@ class NetworkManager {
     
     /// 인증 상태 리셋
     func resetAuthentication() {
-        interceptor.resetAuthentication()
+        digestAuthPlugin.resetAuthentication()
         print("NetworkManager authentication reset")
     }
 }

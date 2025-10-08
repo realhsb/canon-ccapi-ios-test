@@ -13,7 +13,7 @@ public enum BaseAPI: String {
     public var apiDesc: String {
         switch self {
         case .base:
-            return "https://192.168.1.2/ccapi/" // TODO: 카메라마다 API 주소 다름
+            return "https://192.168.1.2:443/ccapi/" // TODO: 카메라마다 API 주소 다름
         }
     }
 }

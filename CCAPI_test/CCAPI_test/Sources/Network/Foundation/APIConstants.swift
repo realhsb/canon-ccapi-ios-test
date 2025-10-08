@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct APIConstants{
+struct APIConstants {
     static let contentType = "Content-Type"
     
 }
