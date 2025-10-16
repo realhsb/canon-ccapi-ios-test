@@ -31,11 +31,6 @@ struct CameraDirectControlView: View {
                 }
             }
         }
-//        .onAppear {
-//            Task {
-//                await viewModel.getISO()
-//            }
-//        }
     }
 }
 
