@@ -20,8 +20,8 @@ class NetworkManager {
     private let session: Session
     
     /// CCAPI Provider
-    lazy var ccapiProvider: MoyaProvider<ShootingTarget> = {
-        return MoyaProvider<ShootingTarget>(
+    lazy var ccapiProvider: MoyaProvider<MultiTarget> = {
+        return MoyaProvider<MultiTarget>(
             session: session,
             plugins: [
                 digestAuthPlugin,
