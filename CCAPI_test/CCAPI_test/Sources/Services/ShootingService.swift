@@ -5,14 +5,10 @@
 //  Created by Subeen on 9/29/25.
 //
 
-import Foundation
 import Combine
 import CombineMoya
 import Moya
-import SwiftUI
-import Alamofire
 
-/// Shooting 관련 API 서비스 프로토콜
 protocol ShootingServiceType {
     /// ISO 값 조회
     func getISO() async throws -> SettingResponse
@@ -21,12 +17,7 @@ protocol ShootingServiceType {
     func putISO(value: String) async throws -> SettingResponse
 }
 
-/// Shooting 관련 API 서비스 구현 (Moya 사용)
 final class ShootingService: BaseService, ShootingServiceType {
-    
-//    private let jsonDecoder = JSONDecoder()
-//    private let provider = NetworkManager.shared.ccapiProvider
-//    private let authPlugin = NetworkManager.shared.digestAuthPlugin  // ✨ Plugin 참조
     
     private var isAuthInitialized = false
     
@@ -43,10 +34,7 @@ final class ShootingService: BaseService, ShootingServiceType {
         
         return response
     }
-    
-    /// ISO 값 변경
 
-    
     // MARK: - PUT ISO
     
     /// ISO 값 변경
