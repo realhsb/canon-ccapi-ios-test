@@ -15,9 +15,9 @@ struct MainView: View {
                     CameraDirectControlView()
                 }
                 
-//                NavigationLink("Live View") {
-//                    LiveView()
-//                }
+                NavigationLink("Live View") {
+                    LiveView()
+                }
             }
         }
     }
