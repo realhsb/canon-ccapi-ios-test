@@ -18,9 +18,7 @@ protocol ShootingServiceType {
 }
 
 final class ShootingService: BaseService, ShootingServiceType {
-    
-    private var isAuthInitialized = false
-    
+
     // MARK: - GET ISO
     
     /// ISO 값 조회
