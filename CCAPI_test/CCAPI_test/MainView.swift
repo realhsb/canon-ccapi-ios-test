@@ -18,6 +18,10 @@ struct MainView: View {
                 NavigationLink("Live View") {
                     LiveView()
                 }
+                
+                NavigationLink("Braketing") {
+                    TestView()
+                }
             }
         }
     }

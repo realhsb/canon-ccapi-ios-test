@@ -15,6 +15,10 @@ protocol ShootingServiceType {
     
     /// ISO 값 변경
     func putISO(value: String) async throws -> SettingResponse
+    
+    func getColorTemperature() async throws -> ColorTemperatureResponse
+    func putColorTemperature(value: Int) async throws -> ColorTemperatureResponse
+    func shoot(af: Bool) async throws -> SettingResponse
 }
 
 final class ShootingService: BaseService, ShootingServiceType {
@@ -45,5 +49,27 @@ final class ShootingService: BaseService, ShootingServiceType {
         print("  New value: \(response.value ?? "nil")")
         
         return response
+    }
+    
+    /// 색온도 조회
+    func getColorTemperature() async throws -> ColorTemperatureResponse {
+        let response = try await requestWithRetry(ShootingTarget.getColorTemperature, decoding: ColorTemperatureResponse.self)
+        
+        return response
+    }
+    
+    /// 색온도 값 변경
+    func putColorTemperature(value: Int) async throws -> ColorTemperatureResponse {
+        let response = try await requestWithRetry(ShootingTarget.putColorTemperature(value), decoding: ColorTemperatureResponse.self)
+        
+        return response
+    }
+    
+    func shoot(af: Bool) async throws -> SettingResponse {
+        let response = try await requestWithRetry(ShootingTarget.shoot(af), decoding: SettingResponse.self)
+        
+        print("success")
+        
+        return response 
     }
 }
